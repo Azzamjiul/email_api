@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Broadcast;
+use Barryvdh\DomPDF\PDF;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class BroadcastController extends Controller
@@ -166,6 +169,66 @@ class BroadcastController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function executeBroadcast($document_id, PDF $pdf)
+    {
+        try {
+            // Mengambil broadcast berdasarkan ID yang diberikan
+            $broadcast = Broadcast::findOrFail($document_id);
+
+            // Cek apakah file PDF sudah ada
+            $pdfPath = storage_path('app/public/') . $broadcast->uuid . '.pdf';
+
+            if (!File::exists($pdfPath)) {
+                // Jika belum, buat PDF dari attachment_content
+                $pdf = $pdf->loadView('pdf_view', ['content' => $broadcast->attachment_content]);
+                $pdf->save($pdfPath);
+            }
+
+            // Ambil semua target
+            $targets = $broadcast->targets;
+
+            // Jika tidak ada target, return info
+            if ($targets->isEmpty()) {
+                return response()->json(['message' => 'No targets available.'], 400);
+            }
+
+            // Loop melalui semua target dan kirim email
+            foreach ($targets as $target) {
+                try {
+                    Mail::send(
+                        'mail',
+                        [
+                            'broadcastMessage' => $broadcast->message, 
+                            'target' => $target
+                        ],
+                        function ($m) use ($target, $pdfPath) {
+                            $m->from('your_email@example.com', 'Your Name');
+                            $m->to($target->email, $target->name)->subject('Your subject here');
+                            $m->attach($pdfPath);
+                        }
+                    );
+
+                    // Jika pengiriman berhasil, update status target
+                    $target->status = 'SENT';
+                    $target->sent_at = now();
+                    $target->save();
+                } catch (Exception $mailException) {
+                    $target->status = 'FAILED';
+                    $target->sent_at = now();
+                    $target->save();
+                    throw $mailException;
+                }
+            }
+
+            return response()->json(['message' => 'Broadcast executed successfully.']);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'An error occurred during broadcast execution.',
                 'error' => $e->getMessage()
             ], 500);
         }
