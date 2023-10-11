@@ -23,7 +23,7 @@ class BroadcastController extends Controller
         ], 200);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PDF $pdf)
     {
         try {
             $validatedData = $request->validate([
@@ -33,6 +33,15 @@ class BroadcastController extends Controller
             ]);
 
             $broadcast = Broadcast::create($validatedData);
+
+            // Cek apakah file PDF sudah ada
+            $pdfPath = storage_path('app/public/') . $broadcast->uuid . '.pdf';
+
+            if (!File::exists($pdfPath)) {
+                // Jika belum, buat PDF dari attachment_content
+                $pdf = $pdf->loadView('pdf_view', ['content' => $broadcast->attachment_content]);
+                $pdf->save($pdfPath);
+            }
 
             return response()->json([
                 'message' => 'Success',
@@ -189,8 +198,8 @@ class BroadcastController extends Controller
                 $pdf->save($pdfPath);
             }
 
-            // Ambil semua target
-            $targets = $broadcast->targets;
+            // Ambil semua yg belum terkirim
+            $targets = $broadcast->targets()->where('status', '!=', 'SENT')->get();
 
             // Jika tidak ada target, return info
             if ($targets->isEmpty()) {
