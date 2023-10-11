@@ -25,4 +25,14 @@ class Broadcast extends Model
             $model->uuid = (string) Str::uuid();
         });
     }
+
+    /**
+     * Define a one-to-many relationship.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function targets()
+    {
+        return $this->hasMany(BroadcastTarget::class);
+    }
 }

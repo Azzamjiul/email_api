@@ -86,7 +86,7 @@ class BroadcastController extends Controller
                 'name' => 'sometimes|required|string|max:255|not_in:""',
                 'message' => 'sometimes|required|string|not_in:""',
                 'attachment_content' => 'sometimes|required|string|not_in:""',
-            ]);    
+            ]);
 
             $broadcast = Broadcast::findOrFail($id);
             $broadcast->update($validatedData);
@@ -126,6 +126,43 @@ class BroadcastController extends Controller
             return response()->json([
                 'message' => 'Broadcast not found'
             ], 404);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function addTargetToBroadcast(Request $request, $broadcastId)
+    {
+        try {
+            $broadcast = Broadcast::findOrFail($broadcastId);
+
+            // Validasi data targets
+            $validatedData = $request->validate([
+                'targets.*.name' => 'required|string|max:255',
+                'targets.*.email' => 'required|email|max:255',
+            ]);
+
+            $targets = $validatedData['targets'];
+
+            foreach ($targets as $target) {
+                $broadcast->targets()->create($target);
+            }
+
+            return response()->json([
+                'message' => 'Targets added successfully'
+            ], 201);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Broadcast not found'
+            ], 404);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
         } catch (Exception $e) {
             return response()->json([
                 'message' => 'Something went wrong',

@@ -20,3 +20,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::apiResource('broadcasts', BroadcastController::class);
+Route::post('broadcasts/{broadcast}/targets', [BroadcastController::class, 'addTargetToBroadcast']);

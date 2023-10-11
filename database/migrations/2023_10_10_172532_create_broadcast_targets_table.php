@@ -16,6 +16,8 @@ return new class extends Migration
             $table->unsignedBigInteger('broadcast_id');
             $table->string('name');
             $table->string('email');
+            $table->string('status')->default('PENDING');
+            $table->timestamp('sent_at')->nullable();
             $table->timestamps();
 
             $table->foreign('broadcast_id')->references('id')->on('broadcasts')->onDelete('cascade');
