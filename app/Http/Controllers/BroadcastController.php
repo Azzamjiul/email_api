@@ -186,33 +186,27 @@ class BroadcastController extends Controller
     public function executeBroadcast($document_id, PDF $pdf)
     {
         try {
-            // Mengambil broadcast berdasarkan ID yang diberikan
             $broadcast = Broadcast::findOrFail($document_id);
 
-            // Cek apakah file PDF sudah ada
             $pdfPath = storage_path('app/public/') . $broadcast->uuid . '.pdf';
 
             if (!File::exists($pdfPath)) {
-                // Jika belum, buat PDF dari attachment_content
                 $pdf = $pdf->loadView('pdf_view', ['content' => $broadcast->attachment_content]);
                 $pdf->save($pdfPath);
             }
 
-            // Ambil semua yg belum terkirim
             $targets = $broadcast->targets()->where('status', '!=', 'SENT')->get();
 
-            // Jika tidak ada target, return info
             if ($targets->isEmpty()) {
                 return response()->json(['message' => 'No targets available.'], 400);
             }
 
-            // Loop melalui semua target dan kirim email
             foreach ($targets as $target) {
                 try {
                     Mail::send(
                         'mail',
                         [
-                            'broadcastMessage' => $broadcast->message, 
+                            'broadcastMessage' => $broadcast->message,
                             'target' => $target
                         ],
                         function ($m) use ($target, $pdfPath) {
@@ -222,7 +216,6 @@ class BroadcastController extends Controller
                         }
                     );
 
-                    // Jika pengiriman berhasil, update status target
                     $target->status = 'SENT';
                     $target->sent_at = now();
                     $target->save();
@@ -235,6 +228,10 @@ class BroadcastController extends Controller
             }
 
             return response()->json(['message' => 'Broadcast executed successfully.']);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Broadcast not found'
+            ], 404);
         } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'An error occurred during broadcast execution.',
