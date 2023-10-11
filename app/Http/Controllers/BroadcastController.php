@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AddTargetsRequest;
+use App\Http\Requests\StoreBroadcastRequest;
+use App\Http\Requests\UpdateBroadcastRequest;
 use App\Models\Broadcast;
 use Barryvdh\DomPDF\PDF;
 use Exception;
@@ -23,16 +26,10 @@ class BroadcastController extends Controller
         ], 200);
     }
 
-    public function store(Request $request, PDF $pdf)
+    public function store(StoreBroadcastRequest $request, PDF $pdf)
     {
         try {
-            $validatedData = $request->validate([
-                'name' => 'required|string|max:255',
-                'message' => 'required|string',
-                'attachment_content' => 'required|string',
-            ]);
-
-            $broadcast = Broadcast::create($validatedData);
+            $broadcast = Broadcast::create($request->validated());
 
             // Cek apakah file PDF sudah ada
             $pdfPath = storage_path('app/public/') . $broadcast->uuid . '.pdf';
@@ -91,17 +88,11 @@ class BroadcastController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateBroadcastRequest $request, $id)
     {
         try {
-            $validatedData = $request->validate([
-                'name' => 'sometimes|required|string|max:255|not_in:""',
-                'message' => 'sometimes|required|string|not_in:""',
-                'attachment_content' => 'sometimes|required|string|not_in:""',
-            ]);
-
             $broadcast = Broadcast::findOrFail($id);
-            $broadcast->update($validatedData);
+            $broadcast->update($request->validated());
 
             return response()->json([
                 'message' => 'Updated successfully',
@@ -146,17 +137,11 @@ class BroadcastController extends Controller
         }
     }
 
-    public function addTargetToBroadcast(Request $request, $broadcastId)
+    public function addTargetToBroadcast(AddTargetsRequest $request, $broadcastId)
     {
         try {
             $broadcast = Broadcast::findOrFail($broadcastId);
-
-            // Validasi data targets
-            $validatedData = $request->validate([
-                'targets.*.name' => 'required|string|max:255',
-                'targets.*.email' => 'required|email|max:255',
-            ]);
-
+            $validatedData = $request->validated();
             $targets = $validatedData['targets'];
 
             foreach ($targets as $target) {
