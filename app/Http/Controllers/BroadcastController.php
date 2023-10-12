@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\BroadcastCreated;
 use App\Http\Requests\AddTargetsRequest;
 use App\Http\Requests\StoreBroadcastRequest;
 use App\Http\Requests\UpdateBroadcastRequest;
@@ -34,14 +35,8 @@ class BroadcastController extends Controller
         try {
             $broadcast = Broadcast::create($request->validated());
 
-            // Cek apakah file PDF sudah ada
-            $pdfPath = storage_path('app/public/') . $broadcast->uuid . '.pdf';
-
-            if (!File::exists($pdfPath)) {
-                // Jika belum, buat PDF dari attachment_content
-                $pdf = $pdf->loadView('pdf_view', ['content' => $broadcast->attachment_content]);
-                $pdf->save($pdfPath);
-            }
+            // Kirim event
+            event(new BroadcastCreated($broadcast));
 
             return response()->json([
                 'message' => 'Success',
