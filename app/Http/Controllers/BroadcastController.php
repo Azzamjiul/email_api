@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\ExecuteBroadcast;
 use App\Http\Requests\AddTargetsRequest;
 use App\Http\Requests\StoreBroadcastRequest;
 use App\Http\Requests\UpdateBroadcastRequest;
@@ -16,6 +17,11 @@ use Illuminate\Validation\ValidationException;
 
 class BroadcastController extends Controller
 {
+    public function __construct(
+        private readonly ExecuteBroadcast $executeBroadcast,
+    ) {
+    }
+
     public function index()
     {
         $broadcasts = Broadcast::all();
@@ -113,8 +119,6 @@ class BroadcastController extends Controller
             ], 500);
         }
     }
-
-
     public function destroy($id)
     {
         try {
@@ -167,54 +171,15 @@ class BroadcastController extends Controller
         }
     }
 
-    public function executeBroadcast($document_id, PDF $pdf)
+    public function executeBroadcast($document_id)
     {
         try {
-            $broadcast = Broadcast::findOrFail($document_id);
-
-            $pdfPath = storage_path('app/public/') . $broadcast->uuid . '.pdf';
-
-            if (!File::exists($pdfPath)) {
-                $pdf = $pdf->loadView('pdf_view', ['content' => $broadcast->attachment_content]);
-                $pdf->save($pdfPath);
-            }
-
-            $targets = $broadcast->targets()->where('status', '!=', 'SENT')->get();
-
-            if ($targets->isEmpty()) {
-                return response()->json(['message' => 'No targets available.'], 400);
-            }
-
-            foreach ($targets as $target) {
-                try {
-                    Mail::send(
-                        'mail',
-                        [
-                            'broadcastMessage' => $broadcast->message,
-                            'target' => $target
-                        ],
-                        function ($m) use ($target, $pdfPath) {
-                            $m->from('your_email@example.com', 'Your Name');
-                            $m->to($target->email, $target->name)->subject('Your subject here');
-                            $m->attach($pdfPath);
-                        }
-                    );
-
-                    $target->status = 'SENT';
-                    $target->sent_at = now();
-                    $target->save();
-                } catch (Exception $mailException) {
-                    $target->status = 'FAILED';
-                    $target->sent_at = now();
-                    $target->save();
-                    throw $mailException;
-                }
-            }
-
+            $this->executeBroadcast->execute($document_id);
             return response()->json(['message' => 'Broadcast executed successfully.']);
         } catch (ModelNotFoundException $e) {
             return response()->json([
-                'message' => 'Broadcast not found'
+                'message' => 'Not Found',
+                'error' => $e->getMessage(),
             ], 404);
         } catch (\Throwable $e) {
             return response()->json([
