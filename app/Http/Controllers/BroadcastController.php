@@ -7,6 +7,7 @@ use App\Http\Requests\StoreBroadcastRequest;
 use App\Http\Requests\UpdateBroadcastRequest;
 use App\Models\Broadcast;
 use App\Services\BroadcastService;
+use App\Traits\HandleResponseJson;
 use Barryvdh\DomPDF\PDF;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -17,6 +18,8 @@ use Illuminate\Validation\ValidationException;
 
 class BroadcastController extends Controller
 {
+    use HandleResponseJson;
+
     public function index()
     {
         $broadcasts = Broadcast::all();
@@ -69,23 +72,14 @@ class BroadcastController extends Controller
 
     public function show($id)
     {
-        try {
+        return $this->handleResponseJson(function () use ($id) {
             $broadcast = Broadcast::findOrFail($id);
 
             return response()->json([
                 'message' => 'Success',
                 'data' => $broadcast
             ], 200);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Broadcast not found'
-            ], 404);
-        } catch (Exception $e) {
-            return response()->json([
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        });
     }
 
     public function update(UpdateBroadcastRequest $request, $id)
