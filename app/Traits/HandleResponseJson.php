@@ -19,7 +19,7 @@ trait HandleResponseJson
       ], 422);
     } catch (ModelNotFoundException $e) {
       return response()->json([
-        'message' => 'Resource not found',
+        'message' => 'Not found',
         'error' => $e->getMessage()
       ], 404);
     } catch (Exception $e) {

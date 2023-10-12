@@ -31,7 +31,7 @@ class BroadcastController extends Controller
 
     public function store(StoreBroadcastRequest $request, PDF $pdf)
     {
-        try {
+        return $this->handleResponseJson(function () use ($request, $pdf) {
             $broadcast = Broadcast::create($request->validated());
 
             // Cek apakah file PDF sudah ada
@@ -47,27 +47,7 @@ class BroadcastController extends Controller
                 'message' => 'Success',
                 'data' => $broadcast
             ], 201);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation Error',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Resource not found',
-                'error' => $e->getMessage()
-            ], 404);
-        } catch (QueryException $e) {
-            return response()->json([
-                'message' => 'Database Error',
-                'error' => $e->getMessage()
-            ], 500);
-        } catch (Exception $e) {
-            return response()->json([
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        });
     }
 
     public function show($id)
@@ -84,7 +64,7 @@ class BroadcastController extends Controller
 
     public function update(UpdateBroadcastRequest $request, $id)
     {
-        try {
+        return $this->handleResponseJson(function () use ($request, $id) {
             $broadcast = Broadcast::findOrFail($id);
             $broadcast->update($request->validated());
 
@@ -92,43 +72,20 @@ class BroadcastController extends Controller
                 'message' => 'Updated successfully',
                 'data' => $broadcast
             ], 200);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Broadcast not found'
-            ], 404);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (Exception $e) {
-            return response()->json([
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        });
     }
 
 
     public function destroy($id)
     {
-        try {
+        return $this->handleResponseJson(function () use ($id) {
             $broadcast = Broadcast::findOrFail($id);
             $broadcast->delete();
 
             return response()->json([
                 'message' => 'Deleted successfully'
             ], 200);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Broadcast not found'
-            ], 404);
-        } catch (Exception $e) {
-            return response()->json([
-                'message' => 'Something went wrong',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        });
     }
 
     public function addTargetToBroadcast(AddTargetsRequest $request, $broadcastId)
