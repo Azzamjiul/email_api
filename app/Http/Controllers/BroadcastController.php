@@ -6,6 +6,7 @@ use App\Http\Requests\AddTargetsRequest;
 use App\Http\Requests\StoreBroadcastRequest;
 use App\Http\Requests\UpdateBroadcastRequest;
 use App\Models\Broadcast;
+use App\Services\BroadcastService;
 use Barryvdh\DomPDF\PDF;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -170,46 +171,8 @@ class BroadcastController extends Controller
     public function executeBroadcast($document_id, PDF $pdf)
     {
         try {
-            $broadcast = Broadcast::findOrFail($document_id);
-
-            $pdfPath = storage_path('app/public/') . $broadcast->uuid . '.pdf';
-
-            if (!File::exists($pdfPath)) {
-                $pdf = $pdf->loadView('pdf_view', ['content' => $broadcast->attachment_content]);
-                $pdf->save($pdfPath);
-            }
-
-            $targets = $broadcast->targets()->where('status', '!=', 'SENT')->get();
-
-            if ($targets->isEmpty()) {
-                return response()->json(['message' => 'No targets available.'], 400);
-            }
-
-            foreach ($targets as $target) {
-                try {
-                    Mail::send(
-                        'mail',
-                        [
-                            'broadcastMessage' => $broadcast->message,
-                            'target' => $target
-                        ],
-                        function ($m) use ($target, $pdfPath) {
-                            $m->from('your_email@example.com', 'Your Name');
-                            $m->to($target->email, $target->name)->subject('Your subject here');
-                            $m->attach($pdfPath);
-                        }
-                    );
-
-                    $target->status = 'SENT';
-                    $target->sent_at = now();
-                    $target->save();
-                } catch (Exception $mailException) {
-                    $target->status = 'FAILED';
-                    $target->sent_at = now();
-                    $target->save();
-                    throw $mailException;
-                }
-            }
+            $broadcastService = new BroadcastService();
+            $broadcastService->executeBroadcast($document_id, $pdf);
 
             return response()->json(['message' => 'Broadcast executed successfully.']);
         } catch (ModelNotFoundException $e) {
